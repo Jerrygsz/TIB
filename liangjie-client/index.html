@@ -24,6 +24,11 @@
         overflow: hidden;
         background: #0a0a12;
         font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        /* 禁止触摸默认行为（滚动/缩放/长按选择），确保 Phaser 能稳定接收 pointerdown */
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
       }
       #game {
         width: 100vw;
@@ -31,6 +36,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        touch-action: none;
+      }
+      #game canvas {
+        touch-action: none;
+        display: block;
       }
     </style>
   </head>
