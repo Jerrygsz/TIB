@@ -90,7 +90,8 @@ export class WorldMapScene extends Phaser.Scene {
 
     const color = unlocked ? NODE_COLORS[node.type] || 0x888888 : 0x333333;
 
-    const container = this.add.container(px, py);
+    // 深度设为 50，确保在背景和连接线之上，HUD(900) 之下
+    const container = this.add.container(px, py).setDepth(50);
 
     // 光晕
     const glow = this.add.circle(0, 0, 26, color, unlocked ? 0.18 : 0.06);
@@ -111,9 +112,11 @@ export class WorldMapScene extends Phaser.Scene {
 
     container.add([glow, icon, label]);
 
-    container.setSize(48, 64);
+    // 大点击区域（80x80），适配手指触摸精度，避免点不中
+    const hitSize = 80;
+    container.setSize(hitSize, hitSize);
     container.setInteractive(
-      new Phaser.Geom.Rectangle(-24, -24, 48, 64),
+      new Phaser.Geom.Rectangle(-hitSize / 2, -hitSize / 2, hitSize, hitSize),
       Phaser.Geom.Rectangle.Contains
     );
     container.input!.cursor = 'pointer';
