@@ -12,6 +12,7 @@ const TUTORIAL_SEEN_KEY = 'liangjie:battle_tutorial_seen';
 
 export class BattleScene extends Phaser.Scene {
   private iframe?: HTMLIFrameElement;
+  private headerEl?: HTMLDivElement;
   private nodeId: string = '';
   private stage: string = 'forest';
   private loadingText?: Phaser.GameObjects.Text;
@@ -33,16 +34,9 @@ export class BattleScene extends Phaser.Scene {
 
     this.add.rectangle(width / 2, height / 2, width, height, 0x0a0a12);
 
-    this.add.text(20, 20, `裂隙战斗：${node?.name || '未知区域'}`, {
-      fontSize: '18px',
-      color: '#f472b6'
-    });
-
-    const backBtn = this.add
-      .text(width - 20, 20, '← 撤退', { fontSize: '16px', color: '#888' })
-      .setOrigin(1, 0)
-      .setInteractive({ useHandCursor: true });
-    backBtn.on('pointerdown', () => this.exitBattle());
+    // 标题 + 撤退按钮：用 DOM 叠加在 iframe 之上（iframe 占满全屏后会拦截
+    // Phaser canvas 的 pointer 事件，所以必须用 DOM 元素才能点击）。
+    this.createHeader(node?.name || '未知区域');
 
     this.loadingText = this.add
       .text(width / 2, height / 2, '正在接入裂隙…', { fontSize: '16px', color: '#888' })
@@ -52,6 +46,48 @@ export class BattleScene extends Phaser.Scene {
 
     window.addEventListener('message', this.onBattleMessage);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
+  }
+
+  /** 创建顶部 DOM 标题栏，覆盖在 iframe 之上 */
+  private createHeader(nodeName: string) {
+    const header = document.createElement('div');
+    header.style.position = 'absolute';
+    header.style.top = '0';
+    header.style.left = '0';
+    header.style.right = '0';
+    header.style.height = '44px';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.padding = '0 16px';
+    header.style.background = 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 100%)';
+    header.style.zIndex = '10';
+    header.style.pointerEvents = 'none'; // 整体不拦截，仅按钮可点
+
+    const title = document.createElement('span');
+    title.textContent = `裂隙战斗：${nodeName}`;
+    title.style.fontSize = '16px';
+    title.style.color = '#f472b6';
+    title.style.fontWeight = '600';
+    title.style.textShadow = '0 1px 4px rgba(0,0,0,0.8)';
+
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '← 撤退';
+    backBtn.style.fontSize = '15px';
+    backBtn.style.color = '#bbb';
+    backBtn.style.background = 'rgba(0,0,0,0.4)';
+    backBtn.style.border = '1px solid rgba(255,255,255,0.15)';
+    backBtn.style.borderRadius = '8px';
+    backBtn.style.padding = '4px 10px';
+    backBtn.style.cursor = 'pointer';
+    backBtn.style.pointerEvents = 'auto';
+    backBtn.style.fontFamily = 'inherit';
+    backBtn.addEventListener('click', () => this.exitBattle());
+
+    header.appendChild(title);
+    header.appendChild(backBtn);
+    document.getElementById('game')!.appendChild(header);
+    this.headerEl = header;
   }
 
   private startIframe() {
@@ -66,9 +102,9 @@ export class BattleScene extends Phaser.Scene {
     this.iframe.title = '裂隙战斗';
     this.iframe.style.position = 'absolute';
     this.iframe.style.left = '0';
-    this.iframe.style.top = '60px';
+    this.iframe.style.top = '0';
     this.iframe.style.width = '100%';
-    this.iframe.style.height = 'calc(100% - 60px)';
+    this.iframe.style.height = '100%';
     this.iframe.style.border = 'none';
     this.iframe.style.background = '#0a0a12';
     this.iframe.allow = 'autoplay; fullscreen';
@@ -209,6 +245,8 @@ export class BattleScene extends Phaser.Scene {
     window.removeEventListener('message', this.onBattleMessage);
     this.iframe?.remove();
     this.iframe = undefined;
+    this.headerEl?.remove();
+    this.headerEl = undefined;
   }
 
   private exitBattle() {
