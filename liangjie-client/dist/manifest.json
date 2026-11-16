@@ -1,0 +1,21 @@
+{
+  "name": "两界之间",
+  "short_name": "两界之间",
+  "description": "科技与修仙交汇世界中的三层地图生存 RPG：世界大地图 · 城镇经营 · 裂隙战斗。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0a12",
+  "background_color": "#0a0a12",
+  "categories": ["games", "entertainment"],
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

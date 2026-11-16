@@ -1,0 +1,13 @@
+{
+  "type": "tileset",
+  "version": 1.2,
+  "name": "terrain",
+  "tilewidth": 64,
+  "tileheight": 64,
+  "tilecount": 2,
+  "columns": 2,
+  "tiles": [
+    { "id": 0, "type": "ground", "texture": "tile_ground" },
+    { "id": 1, "type": "path", "texture": "tile_path" }
+  ]
+}
