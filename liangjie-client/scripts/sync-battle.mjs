@@ -11,7 +11,7 @@ const battleRoot = path.resolve(clientRoot, '..', 'liangjie-battle');
 const outDir = path.resolve(clientRoot, 'dist', 'battle');
 
 // 战斗层是零依赖静态项目，直接拷贝这些文件/目录即可运行
-const ENTRIES = ['index.html', 'styles.css', 'manifest.json', 'src', 'docs'];
+const ENTRIES = ['index.html', 'styles.css', 'manifest.json', 'service-worker.js', 'src', 'docs'];
 
 async function exists(target) {
   try {

@@ -1,8 +1,8 @@
 // 两界之间 · Service Worker（PWA 离线缓存）
-const CACHE_VERSION = 'liangjie-v1';
+// 重要：HTML 走 network-first，确保部署更新后用户能拿到最新版（避免缓存旧黑屏页）
+const CACHE_VERSION = 'liangjie-v2';
 const APP_SHELL = [
   './',
-  './index.html',
   './manifest.json',
   './icon.svg'
 ];
@@ -23,7 +23,12 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// 缓存优先策略：命中缓存则返回，否则网络请求并缓存（仅同源 GET）
+// 判断是否是 HTML 导航请求
+function isHtmlRequest(req) {
+  return req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html');
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -31,13 +36,29 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // HTML 文档：network-first，确保部署后立即可见，离线时回退缓存
+  if (isHtmlRequest(req)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // 静态资源：cache-first（带 hash 文件名，更新时文件名会变）
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req)
         .then((res) => {
-          // 仅缓存成功的同源静态资源
-          if (res.ok && (req.mode === 'cors' || req.mode === 'same-origin' || req.mode === 'no-cors')) {
+          if (res.ok) {
             const clone = res.clone();
             caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone));
           }
