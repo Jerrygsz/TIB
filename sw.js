@@ -1,6 +1,6 @@
 // 两界之间 · Service Worker（PWA 离线缓存）
 // 重要：HTML 走 network-first，确保部署更新后用户能拿到最新版（避免缓存旧黑屏页）
-const CACHE_VERSION = 'liangjie-v2';
+const CACHE_VERSION = 'liangjie-v3';
 const APP_SHELL = [
   './',
   './manifest.json',
