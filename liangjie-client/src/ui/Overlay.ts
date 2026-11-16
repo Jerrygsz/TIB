@@ -18,11 +18,14 @@ export interface OverlayOptions {
 
 /** 打开一个居中的覆盖层面板，返回容器（调用 destroy 关闭）。 */
 export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.GameObjects.Container {
-  const { width, height } = scene.scale;
+  // 用窗口实际尺寸，避免 scene.scale 在 RESIZE 模式下未及时更新导致面板偏移
+  const width = window.innerWidth;
+  const height = window.innerHeight;
   const cx = width / 2;
   const cy = height / 2;
 
-  const container = scene.add.container(0, 0).setDepth(1000);
+  // setScrollFactor(0) 固定在屏幕上，不随摄像机滚动
+  const container = scene.add.container(0, 0).setDepth(1000).setScrollFactor(0);
 
   const backdrop = scene.add
     .rectangle(cx, cy, width, height, 0x000000, 0.65)

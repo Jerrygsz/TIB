@@ -41,8 +41,9 @@ export class VirtualJoystick {
   }
 
   private create() {
-    const width = this.scene.scale.width;
-    const height = this.scene.scale.height;
+    // 用窗口实际尺寸确保感应区覆盖全屏
+    const width = window.innerWidth;
+    const height = window.innerHeight;
 
     // 全屏触摸感应区（低深度，确保 UI 按钮优先捕获点击）
     const zone = this.scene.add.zone(width / 2, height / 2, width, height);

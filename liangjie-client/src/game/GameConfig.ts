@@ -19,7 +19,14 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
+      autoRound: true
+    },
+    render: {
+      pixelArt: true,
+      antialias: false,
+      roundPixels: true,
+      powerPreference: 'high-performance'
     },
     physics: {
       default: 'arcade',
@@ -28,10 +35,6 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
         debug: false
       }
     },
-    scene: [BootScene, WorldMapScene, TownScene, BattleScene],
-    render: {
-      pixelArt: true,
-      antialias: false
-    }
+    scene: [BootScene, WorldMapScene, TownScene, BattleScene]
   };
 }

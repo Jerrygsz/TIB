@@ -124,13 +124,16 @@ export class TownScene extends Phaser.Scene {
       this.add.tileSprite(width / 2 - 70, 0, 140, height, 'tile_path').setOrigin(0, 0).setAlpha(0.85);
     }
 
-    this.add.text(20, 84, node?.name || '城镇', { fontSize: '22px', color: '#c8b6ff' });
+    this.add.text(20, 84, node?.name || '城镇', { fontSize: '22px', color: '#c8b6ff' })
+      .setScrollFactor(0)
+      .setDepth(900);
     this.hud = drawHud(this);
 
     const backBtn = this.add
       .text(width - 20, 20, '← 返回地图', { fontSize: '16px', color: '#888' })
       .setOrigin(1, 0)
       .setDepth(900)
+      .setScrollFactor(0)
       .setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.scene.start(SceneKeys.WorldMap));
 
@@ -346,7 +349,8 @@ export class TownScene extends Phaser.Scene {
   }
 
   private refreshPrompt() {
-    const { width, height } = this.scale;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     this.prompt?.destroy();
     this.prompt = undefined;
     if (!this.nearby) return;
@@ -365,21 +369,24 @@ export class TownScene extends Phaser.Scene {
 
   /** 右下角浮动交互按钮（移动端触摸友好） */
   private createInteractButton() {
-    const { width, height } = this.scale;
-    const btnX = width - 70;
-    const btnY = height - 70;
+    // 用窗口实际尺寸，和 Overlay 保持一致
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    // 放在右下角偏上，避开浏览器底部手势条，减少与建筑重叠
+    const btnX = width - 56;
+    const btnY = height - 110;
 
     const container = this.add.container(btnX, btnY).setDepth(860).setScrollFactor(0);
 
     const circle = this.add
-      .circle(0, 0, 34, 0xc8b6ff, 0.85)
+      .circle(0, 0, 30, 0xc8b6ff, 0.8)
       .setStrokeStyle(2, 0xffffff, 0.5);
     const label = this.add
-      .text(0, 0, '交互', { fontSize: '15px', color: '#0a0a12', fontStyle: 'bold' })
+      .text(0, 0, '交互', { fontSize: '14px', color: '#0a0a12', fontStyle: 'bold' })
       .setOrigin(0.5);
 
     container.add([circle, label]);
-    container.setSize(68, 68);
+    container.setSize(60, 60);
     container.setInteractive({ useHandCursor: true });
     container.on('pointerdown', () => this.tryEnterBuilding());
     container.setVisible(false);
