@@ -87,6 +87,7 @@ export class InputManager {
         this.onGamepadCycleNext = () => {};
         this.onGamepadCyclePrev = () => {};
         this._lastEdgeTapAt = 0;
+        this._lastTopTapAt = 0;
         // Previous-frame button snapshot for edge detection.
         this._prevButtons = [];
         // Bookkeeping for the special-skill button on touch (iter-14).
@@ -152,16 +153,32 @@ export class InputManager {
         this.listeners.push(['keyup', ku, target]);
         this.listeners.push(['blur', blur, target]);
 
-        // Touch edge double-tap → pause. Registered on the document so the
-        // gesture works anywhere outside the joystick pad.
+        // 全屏触摸拖动移动：任意位置按下拖动即可控制角色移动
+        this._attachFullscreenTouch();
+
+        // 顶部双击切换全屏 + 左右边缘双击暂停
         const onTouchStart = (e) => {
             if (!e.touches || e.touches.length === 0) return;
             const t = e.touches[0];
             const w = window.innerWidth;
+            const h = window.innerHeight;
+            const now = Date.now();
+
+            // 顶部 10% 区域：双击切换全屏（优先于边缘暂停）
+            if (t.clientY < h * 0.1) {
+                if (now - this._lastTopTapAt < DOUBLE_TAP_WINDOW_MS) {
+                    this._lastTopTapAt = 0;
+                    this._toggleFullscreen();
+                } else {
+                    this._lastTopTapAt = now;
+                }
+                return;
+            }
+
+            // 左右边缘 12%：双击暂停
             const edgeLeft = t.clientX < w * 0.12;
             const edgeRight = t.clientX > w * 0.88;
             if (!edgeLeft && !edgeRight) return;
-            const now = Date.now();
             if (now - this._lastEdgeTapAt < DOUBLE_TAP_WINDOW_MS) {
                 this._lastEdgeTapAt = 0;
                 this.onTogglePause();
@@ -171,6 +188,78 @@ export class InputManager {
         };
         document.addEventListener('touchstart', onTouchStart, { passive: true });
         this.listeners.push(['touchstart', onTouchStart, document]);
+    }
+
+    /**
+     * 切换全屏。在 iframe 内调用时会让 iframe 元素进入全屏（需父页面
+     * 给 iframe 设置 allow="fullscreen"）。
+     */
+    _toggleFullscreen() {
+        if (typeof document === 'undefined') return;
+        try {
+            if (!document.fullscreenElement) {
+                const el = document.documentElement;
+                const req = el.requestFullscreen || el.webkitRequestFullscreen;
+                if (req) req.call(el);
+            } else {
+                const exit = document.exitFullscreen || document.webkitExitFullscreen;
+                if (exit) exit.call(document);
+            }
+        } catch {
+            /* 全屏 API 不可用或被拦截时静默失败 */
+        }
+    }
+
+    /**
+     * 全屏触摸拖动移动：手指在屏幕任意位置按下并拖动，产生移动向量。
+     * 拖动距离越大，移动速度越快（归一化到 [-1, 1]）。
+     */
+    _attachFullscreenTouch() {
+        let startX = 0, startY = 0;
+        let active = false;
+        // 拖动灵敏度：移动多少像素对应满速
+        const maxDrag = 60;
+
+        const onStart = (e) => {
+            if (!e.touches || e.touches.length === 0) return;
+            const t = e.touches[0];
+            startX = t.clientX;
+            startY = t.clientY;
+            active = true;
+        };
+        const onMove = (e) => {
+            if (!active || !e.touches || e.touches.length === 0) return;
+            const t = e.touches[0];
+            const dx = t.clientX - startX;
+            const dy = t.clientY - startY;
+            const d = Math.hypot(dx, dy);
+            if (d < 4) {
+                // 死区：微小移动不触发
+                this.touchVec.x = 0;
+                this.touchVec.y = 0;
+                return;
+            }
+            const mag = Math.min(d / maxDrag, 1);
+            const nx = dx / d;
+            const ny = dy / d;
+            this.touchVec.x = nx * mag;
+            this.touchVec.y = ny * mag;
+            e.preventDefault?.();
+        };
+        const onEnd = () => {
+            active = false;
+            this.touchVec.x = 0;
+            this.touchVec.y = 0;
+        };
+
+        document.addEventListener('touchstart', onStart, { passive: true });
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+        document.addEventListener('touchcancel', onEnd);
+        this.listeners.push(['touchstart', onStart, document]);
+        this.listeners.push(['touchmove', onMove, document]);
+        this.listeners.push(['touchend', onEnd, document]);
+        this.listeners.push(['touchcancel', onEnd, document]);
     }
 
     detach() {

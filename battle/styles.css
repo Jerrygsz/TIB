@@ -44,20 +44,19 @@ body {
 }
 
 body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: block;
+    margin: 0;
+    padding: 0;
 }
 
 #gameContainer {
-    position: relative;
-    box-shadow: 0 0 60px rgba(120, 60, 220, 0.35);
-    border-radius: 6px;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
     overflow: hidden;
-    max-width: 100vw;
-    max-height: 100vh;
-    max-height: 100svh;
-    max-height: 100dvh;
 }
 
 /*
@@ -95,7 +94,6 @@ body {
 
 canvas {
     display: block;
-    border: 1px solid #222;
     background: #1a1a2e;
     width: 100%;
     height: 100%;
@@ -597,9 +595,10 @@ canvas {
 }
 
 @media (hover: none) and (pointer: coarse) {
+    /* 全屏触摸拖动移动，不再显示虚拟摇杆和特殊技能按钮 */
     .joystick,
     .special-skill-btn {
-        display: block;
+        display: none !important;
     }
 }
 

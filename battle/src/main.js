@@ -547,11 +547,11 @@ export class Game {
     _resize() {
         const container = document.getElementById('gameContainer');
         if (!container) return;
-        const w = Math.min(window.innerWidth - 16, CONFIG.CANVAS_WIDTH);
-        const h = Math.min(window.innerHeight - 16, CONFIG.CANVAS_HEIGHT);
-        const scale = Math.min(w / CONFIG.CANVAS_WIDTH, h / CONFIG.CANVAS_HEIGHT);
-        container.style.width = `${CONFIG.CANVAS_WIDTH * scale}px`;
-        container.style.height = `${CONFIG.CANVAS_HEIGHT * scale}px`;
+        // 占满整个视口，不再限制最大尺寸
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        container.style.width = `${w}px`;
+        container.style.height = `${h}px`;
     }
 
     start() {
