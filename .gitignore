@@ -1,0 +1,4 @@
+# 排除源码与依赖，仅保留构建产物
+liangjie-client/
+liangjie-battle/
+node_modules/
