@@ -19,8 +19,26 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
     )
+      .then(() => self.clients.claim())
+      .then(() => {
+        // 新 SW 接管后，强制所有窗口客户端刷新，确保加载最新版页面
+        // （旧版 index.html 可能没有更新监听逻辑，所以用 navigate 强制刷新）
+        return self.clients.matchAll({ type: 'window' }).then((clients) => {
+          clients.forEach((client) => {
+            if ('navigate' in client) {
+              client.navigate(client.url).catch(() => {});
+            }
+          });
+        });
+      })
   );
-  self.clients.claim();
+});
+
+// 接收页面消息，立即跳过等待阶段激活新 SW
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // 判断是否是 HTML 导航请求
