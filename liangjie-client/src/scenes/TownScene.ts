@@ -34,6 +34,8 @@ export class TownScene extends Phaser.Scene {
   private activeOverlay?: Phaser.GameObjects.Container;
   private joystick?: VirtualJoystick;
   private interactBtn?: Phaser.GameObjects.Container;
+  private interactBtnShown = false;
+  private interactBtnHitR = 40;
   private mapData?: TiledMapData;
 
   constructor() {
@@ -89,6 +91,7 @@ export class TownScene extends Phaser.Scene {
     this.activeOverlay = undefined;
     this.nearby = null;
     this.prompt = undefined;
+    this.interactBtnShown = false;
 
     ensureTextures(this);
 
@@ -344,7 +347,7 @@ export class TownScene extends Phaser.Scene {
     if (closest !== this.nearby) {
       this.nearby = closest;
       this.refreshPrompt();
-      this.refreshInteractButton();
+      this.setInteractBtnVisible(closest !== null);
     }
   }
 
@@ -367,15 +370,16 @@ export class TownScene extends Phaser.Scene {
       .setDepth(800);
   }
 
-  /** 右下角浮动交互按钮（移动端触摸友好） */
+  /** 右侧拇指热区浮动交互按钮：靠近可互动物时渐显半透明 */
   private createInteractButton() {
     // 用窗口实际尺寸，和 Overlay 保持一致
     const width = window.innerWidth;
     const height = window.innerHeight;
-    // 放在右下角偏上，避开浏览器底部手势条，减少与建筑重叠
-    const btnX = width - 56;
-    const btnY = height - 110;
-    const btnSize = 72; // 增大触摸区域
+    // 右侧、垂直约 60% 高度：单手拇指自然可及，且远离浏览器底部工具栏/手势条
+    const btnX = width - 84;
+    const btnY = Math.round(height * 0.6);
+    const btnSize = 72;
+    this.interactBtnHitR = btnSize / 2 + 4;
 
     const container = this.add.container(btnX, btnY).setDepth(860).setScrollFactor(0);
 
@@ -395,19 +399,38 @@ export class TownScene extends Phaser.Scene {
     );
     container.on('pointerover', () => circle.setFillStyle(0xd4c5ff));
     container.on('pointerout', () => circle.setFillStyle(0xc8b6ff));
-    container.on('pointerdown', () => {
+    container.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      // 阻止穿透到下层全屏摇杆区，避免点按钮时角色被带动
+      event.stopPropagation();
       circle.setScale(0.92);
       this.tryEnterBuilding();
     });
     container.on('pointerup', () => circle.setScale(1));
     container.on('pointerupoutside', () => circle.setScale(1));
-    container.setVisible(false);
+
+    // 初始隐藏：透明且不可交互，避免挡住其他点击
+    container.setAlpha(0);
+    container.disableInteractive();
 
     this.interactBtn = container;
   }
 
-  private refreshInteractButton() {
-    this.interactBtn?.setVisible(!!this.nearby);
+  /** 渐显/渐隐交互按钮（半透明，适合单手操作） */
+  private setInteractBtnVisible(show: boolean) {
+    const btn = this.interactBtn;
+    if (!btn || show === this.interactBtnShown) return;
+    this.interactBtnShown = show;
+    this.tweens.killTweensOf(btn);
+    if (show) {
+      btn.setInteractive(
+        new Phaser.Geom.Circle(0, 0, this.interactBtnHitR),
+        Phaser.Geom.Circle.Contains
+      );
+      this.tweens.add({ targets: btn, alpha: 0.78, duration: 260, ease: 'Sine.out' });
+    } else {
+      btn.disableInteractive();
+      this.tweens.add({ targets: btn, alpha: 0, duration: 200, ease: 'Sine.in' });
+    }
   }
 
   private tryEnterBuilding() {
@@ -419,9 +442,18 @@ export class TownScene extends Phaser.Scene {
     // 销毁旧的 overlay（如果有），避免叠加
     this.activeOverlay?.destroy();
     this.activeOverlay = openOverlay(this, opts);
-    // overlay 关闭时清空引用，update() 据此恢复角色控制
+
+    // overlay 打开期间禁用摇杆感应区与交互按钮：
+    // 否则点击遮罩关闭面板的事件会穿透到下层按钮，立即重开面板（手机端"卡死"）
+    this.joystick?.zone?.disableInteractive();
+    this.joystick?.reset();
+    this.setInteractBtnVisible(false);
+
+    // overlay 关闭时清空引用，恢复角色控制与按钮
     this.activeOverlay.once('destroy', () => {
       this.activeOverlay = undefined;
+      this.joystick?.zone?.setInteractive();
+      this.setInteractBtnVisible(this.nearby !== null);
     });
     this.prompt?.setVisible(false);
   }

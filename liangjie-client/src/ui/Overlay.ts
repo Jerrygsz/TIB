@@ -82,6 +82,10 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
     container.destroy();
   };
 
+  // Phaser 会把同一次 pointerdown 依深度依次派发给指针下所有可交互对象。
+  // overlay 的处理器必须 stopPropagation，否则事件会穿透到下层的全屏摇杆区
+  // 与交互按钮，导致关闭遮罩的同时立即重开面板（手机端表现为"卡死"）。
+
   // 右上角关闭按钮（X）— 所有 overlay 都有，方便触摸关闭
   const closeBtnSize = 36;
   const closeX = cx + panelW / 2 - closeBtnSize / 2 - 6;
@@ -98,7 +102,10 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
     new Phaser.Geom.Circle(0, 0, closeBtnSize / 2),
     Phaser.Geom.Circle.Contains
   );
-  closeBtn.on('pointerdown', close);
+  closeBtn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+    event.stopPropagation();
+    close();
+  });
   container.add(closeBtn);
 
   if (opts.actions?.length) {
@@ -135,8 +142,9 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
       );
       btn.on('pointerover', () => btnBg.setFillStyle(0xd4c5ff));
       btn.on('pointerout', () => btnBg.setFillStyle(0xc8b6ff));
-      // pointerdown 立即响应，避免手机端 pointerup 丢失
-      btn.on('pointerdown', () => {
+      // pointerdown 立即响应，避免手机端 pointerup 丢失；同时阻止穿透
+      btn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+        event.stopPropagation();
         close();
         action.onClick();
       });
@@ -145,7 +153,10 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
   }
 
   if (opts.dismissible !== false) {
-    backdrop.on('pointerdown', close);
+    backdrop.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      close();
+    });
   }
 
   // ESC 键关闭（键盘用户），overlay 销毁时自动移除监听

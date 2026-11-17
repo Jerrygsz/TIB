@@ -64,6 +64,14 @@ export class VirtualJoystick {
     return this.state;
   }
 
+  /** 强制复位（overlay 打开时调用，避免残留的按下状态在恢复后带动角色） */
+  reset() {
+    this.pointerId = null;
+    this.state.active = false;
+    this.state.x = 0;
+    this.state.y = 0;
+  }
+
   private onDown(pointer: Phaser.Input.Pointer) {
     // 已有手指在控制时忽略多指
     if (this.pointerId !== null) return;
