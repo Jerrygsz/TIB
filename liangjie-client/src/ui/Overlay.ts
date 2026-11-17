@@ -27,6 +27,7 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
   // setScrollFactor(0) 固定在屏幕上，不随摄像机滚动
   const container = scene.add.container(0, 0).setDepth(1000).setScrollFactor(0);
 
+  // 遮罩：设为 interactive 以拦截底层（摇杆等）的触摸事件
   const backdrop = scene.add
     .rectangle(cx, cy, width, height, 0x000000, 0.65)
     .setInteractive();
@@ -74,27 +75,69 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
     y += text.height + 6;
   }
 
-  const close = () => container.destroy();
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    container.destroy();
+  };
+
+  // 右上角关闭按钮（X）— 所有 overlay 都有，方便触摸关闭
+  const closeBtnSize = 36;
+  const closeX = cx + panelW / 2 - closeBtnSize / 2 - 6;
+  const closeY = cy - panelH / 2 + closeBtnSize / 2 + 6;
+  const closeBtnBg = scene.add
+    .circle(closeX, closeY, closeBtnSize / 2, 0x2a2a3a, 0.9)
+    .setStrokeStyle(1, 0xc8b6ff, 0.5);
+  const closeBtnLabel = scene.add
+    .text(closeX, closeY, '✕', { fontSize: '16px', color: '#d0d0dd' })
+    .setOrigin(0.5);
+  const closeBtn = scene.add.container(closeX, closeY, [closeBtnBg, closeBtnLabel]);
+  closeBtn.setSize(closeBtnSize, closeBtnSize);
+  closeBtn.setInteractive(
+    new Phaser.Geom.Circle(0, 0, closeBtnSize / 2),
+    Phaser.Geom.Circle.Contains
+  );
+  closeBtn.on('pointerdown', close);
+  container.add(closeBtn);
 
   if (opts.actions?.length) {
     const total = opts.actions.length;
     const gap = 12;
-    const btnW = (panelW - 56 - gap * (total - 1)) / total;
+    const btnW = Math.max(80, (panelW - 56 - gap * (total - 1)) / total);
+    const btnH = 44; // 固定高度，保证触摸区域足够大
     const startX = cx - (btnW * total + gap * (total - 1)) / 2 + btnW / 2;
     const btnY = cy + panelH / 2 - 38;
 
     opts.actions.forEach((action, i) => {
-      const btn = scene.add
-        .text(startX + i * (btnW + gap), btnY, action.label, {
+      const bx = startX + i * (btnW + gap);
+      // 背景矩形：比文字更大的点击区域
+      const btnBg = scene.add
+        .rectangle(bx, btnY, btnW, btnH, 0xc8b6ff)
+        .setStrokeStyle(1, 0xffffff, 0.3)
+        .setOrigin(0.5);
+      const btnLabel = scene.add
+        .text(bx, btnY, action.label, {
           fontSize: '15px',
           color: '#0a0a12',
-          backgroundColor: '#c8b6ff',
-          padding: { x: 14, y: 8 }
+          fontStyle: 'bold',
+          align: 'center',
+          wordWrap: { width: btnW - 16 }
         })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true });
+        .setOrigin(0.5);
+
+      const btn = scene.add.container(bx, btnY, [btnBg, btnLabel]);
+      btn.setSize(btnW, btnH);
+      // 显式矩形点击区域，避免 Text 边界计算不准
+      btn.setInteractive(
+        new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH),
+        Phaser.Geom.Rectangle.Contains
+      );
+      btn.on('pointerover', () => btnBg.setFillStyle(0xd4c5ff));
+      btn.on('pointerout', () => btnBg.setFillStyle(0xc8b6ff));
+      // pointerdown 立即响应，避免手机端 pointerup 丢失
       btn.on('pointerdown', () => {
-        container.destroy();
+        close();
         action.onClick();
       });
       container.add(btn);
@@ -105,8 +148,16 @@ export function openOverlay(scene: Phaser.Scene, opts: OverlayOptions): Phaser.G
     backdrop.on('pointerdown', close);
   }
 
+  // ESC 键关闭（键盘用户），overlay 销毁时自动移除监听
+  const escHandler = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') close();
+  };
+  window.addEventListener('keydown', escHandler);
+  container.once('destroy', () => window.removeEventListener('keydown', escHandler));
+
   return container;
 }
+
 
 /** 顶部资源条：等级 / 经验 / 灵石 / 灵草 / 体力 */
 export function drawHud(scene: Phaser.Scene): Phaser.GameObjects.Container {

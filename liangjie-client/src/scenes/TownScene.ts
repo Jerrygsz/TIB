@@ -298,7 +298,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   update() {
-    if (this.activeOverlay?.active) {
+    if (this.activeOverlay) {
       this.player.setVelocity(0, 0);
       return;
     }
@@ -375,20 +375,32 @@ export class TownScene extends Phaser.Scene {
     // 放在右下角偏上，避开浏览器底部手势条，减少与建筑重叠
     const btnX = width - 56;
     const btnY = height - 110;
+    const btnSize = 72; // 增大触摸区域
 
     const container = this.add.container(btnX, btnY).setDepth(860).setScrollFactor(0);
 
     const circle = this.add
-      .circle(0, 0, 30, 0xc8b6ff, 0.8)
-      .setStrokeStyle(2, 0xffffff, 0.5);
+      .circle(0, 0, btnSize / 2, 0xc8b6ff, 0.85)
+      .setStrokeStyle(2, 0xffffff, 0.6);
     const label = this.add
-      .text(0, 0, '交互', { fontSize: '14px', color: '#0a0a12', fontStyle: 'bold' })
+      .text(0, 0, '交互', { fontSize: '15px', color: '#0a0a12', fontStyle: 'bold' })
       .setOrigin(0.5);
 
     container.add([circle, label]);
-    container.setSize(60, 60);
-    container.setInteractive({ useHandCursor: true });
-    container.on('pointerdown', () => this.tryEnterBuilding());
+    container.setSize(btnSize, btnSize);
+    // 显式圆形点击区域，比容器尺寸略大以便触摸
+    container.setInteractive(
+      new Phaser.Geom.Circle(0, 0, btnSize / 2 + 4),
+      Phaser.Geom.Circle.Contains
+    );
+    container.on('pointerover', () => circle.setFillStyle(0xd4c5ff));
+    container.on('pointerout', () => circle.setFillStyle(0xc8b6ff));
+    container.on('pointerdown', () => {
+      circle.setScale(0.92);
+      this.tryEnterBuilding();
+    });
+    container.on('pointerup', () => circle.setScale(1));
+    container.on('pointerupoutside', () => circle.setScale(1));
     container.setVisible(false);
 
     this.interactBtn = container;
@@ -399,12 +411,18 @@ export class TownScene extends Phaser.Scene {
   }
 
   private tryEnterBuilding() {
-    if (this.activeOverlay?.active || !this.nearby) return;
+    if (this.activeOverlay || !this.nearby) return;
     this.interact(this.nearby);
   }
 
   private openPanel(opts: OverlayOptions) {
+    // 销毁旧的 overlay（如果有），避免叠加
+    this.activeOverlay?.destroy();
     this.activeOverlay = openOverlay(this, opts);
+    // overlay 关闭时清空引用，update() 据此恢复角色控制
+    this.activeOverlay.once('destroy', () => {
+      this.activeOverlay = undefined;
+    });
     this.prompt?.setVisible(false);
   }
 
