@@ -217,8 +217,22 @@ export class InputManager {
     _attachFullscreenTouch() {
         let startX = 0, startY = 0;
         let active = false;
+        // 一旦确认是拖动（移动超过阈值），就持续 preventDefault 抑制滚动；
+        // 但在点击（微小移动）时不 preventDefault，避免抑制 DOM 按钮的 click。
+        let dragging = false;
         // 拖动灵敏度：移动多少像素对应满速
         const maxDrag = 60;
+        // 判定为"拖动"的阈值：超过此距离才 preventDefault，保留 click 事件给按钮
+        const dragThreshold = 12;
+
+        const isInteractiveTarget = (target) => {
+            if (!target || target.nodeType !== 1) return false;
+            // 按钮、overlay、可点击卡片：不阻止其默认行为
+            const tag = target.tagName;
+            if (tag === 'BUTTON' || tag === 'A') return true;
+            if (target.closest && target.closest('.overlay, .btn, .icon-btn, .upgrade-option')) return true;
+            return false;
+        };
 
         const onStart = (e) => {
             if (!e.touches || e.touches.length === 0) return;
@@ -226,6 +240,7 @@ export class InputManager {
             startX = t.clientX;
             startY = t.clientY;
             active = true;
+            dragging = false;
         };
         const onMove = (e) => {
             if (!active || !e.touches || e.touches.length === 0) return;
@@ -233,21 +248,34 @@ export class InputManager {
             const dx = t.clientX - startX;
             const dy = t.clientY - startY;
             const d = Math.hypot(dx, dy);
+
+            // 超过阈值才判定为拖动，开始 preventDefault（之后一直阻止）
+            if (!dragging && d >= dragThreshold) {
+                dragging = true;
+            }
+
             if (d < 4) {
                 // 死区：微小移动不触发
                 this.touchVec.x = 0;
                 this.touchVec.y = 0;
                 return;
             }
+
             const mag = Math.min(d / maxDrag, 1);
             const nx = dx / d;
             const ny = dy / d;
             this.touchVec.x = nx * mag;
             this.touchVec.y = ny * mag;
-            e.preventDefault?.();
+
+            // 仅在确实是拖动、且目标不是交互元素时才阻止默认行为，
+            // 避免抑制 DOM 按钮的 click 事件。
+            if (dragging && !isInteractiveTarget(e.target)) {
+                e.preventDefault?.();
+            }
         };
         const onEnd = () => {
             active = false;
+            dragging = false;
             this.touchVec.x = 0;
             this.touchVec.y = 0;
         };
